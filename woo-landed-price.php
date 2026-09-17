@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Woo Landed Price (到手价)
  * Description: 商品页显示「到手价 = 商品价 + 预估运费 + 预估税费」，含目的地切换。
- * Version: 1.0.0
+ * Version: 1.1.0
  * Requires at least: 6.4
  * Requires PHP: 7.4
  * Author: vtetech
@@ -13,7 +13,7 @@
 
 defined('ABSPATH') || exit;
 
-define('WLP_VER', '1.0.0');
+define('WLP_VER', '1.1.0');
 define('WLP_DIR', plugin_dir_path(__FILE__));
 define('WLP_URL', plugin_dir_url(__FILE__));
 
@@ -29,6 +29,9 @@ class WLP_Settings {
         'include_shipping'=> 'yes',
         'include_tax'    => 'yes',
         'position'       => 'before_add_to_cart',
+        // 是否显示费用明细（商品价/运费/税费拆分）。
+        // 默认关闭：只显示总到手价，避免对外承诺运费金额与时效。
+        'show_breakdown' => 'no',
     ];
 
     public static function get($key = null) {
@@ -265,6 +268,7 @@ class WLP_Frontend {
                 <span class="wlp-flag" id="wlp-flag"><?php echo self::flag_emoji($current); ?></span>
             </div>
             <div class="wlp-breakdown" id="wlp-breakdown">
+                <?php if (WLP_Settings::get('show_breakdown') === 'yes') : ?>
                 <div class="wlp-row wlp-price-row">
                     <span><?php _e('商品价格', 'woo-landed-price'); ?></span>
                     <span id="wlp-price"><?php echo wc_price($data['price']); ?></span>
@@ -281,6 +285,7 @@ class WLP_Frontend {
                         echo $data['tax'] > 0 ? wc_price($data['tax']) : '<em>' . __('无', 'woo-landed-price') . '</em>';
                     ?></span>
                 </div>
+                <?php endif; ?>
                 <div class="wlp-row wlp-total-row">
                     <span><strong><?php _e('到手价', 'woo-landed-price'); ?></strong></span>
                     <span><strong id="wlp-total"><?php echo wc_price($data['total']); ?></strong></span>
@@ -386,6 +391,16 @@ class WLP_Admin {
                         <th>包含税费</th>
                         <td><input type="checkbox" name="include_tax" value="yes" <?php checked($s['include_tax'], 'yes'); ?>></td>
                     </tr>
+                    <tr>
+                        <th>显示费用明细</th>
+                        <td>
+                            <input type="checkbox" name="show_breakdown" value="yes" <?php checked($s['show_breakdown'], 'yes'); ?>>
+                            <p class="description">
+                                勾选后会拆分显示「商品价格 / 预估运费 / 预估税费」。<br>
+                                <strong>建议关闭</strong>：只显示总到手价，避免把运费金额暴露给客户（国内直邮运费随货代报价浮动，不适合对外承诺）。
+                            </p>
+                        </td>
+                    </tr>
                 </table>
                 <?php submit_button('保存设置'); ?>
             </form>
@@ -419,7 +434,7 @@ class WLP_Admin {
                 WLP_Settings::update($f, sanitize_text_field(wp_unslash($_POST[$f])));
             }
         }
-        foreach (['enabled','include_shipping','include_tax'] as $f) {
+        foreach (['enabled','include_shipping','include_tax','show_breakdown'] as $f) {
             WLP_Settings::update($f, isset($_POST[$f]) ? 'yes' : 'no');
         }
     }
